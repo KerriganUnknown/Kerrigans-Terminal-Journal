@@ -14,7 +14,9 @@ INSTALL INSTRUCTIONS
 	> Download Kerrigans_Terminal_Journal.zip
 	> Go into the .zip and take out "Kerrigans_Terminal_Journal" folder,
 		-and place it somewhere like your C: drive or My Documents or Desktop or wherever you want to keep it.
-	> You can then go into the "Kerrigans_Terminal_Journal" folder and click/open the "KTJ.exe" to launch the app/program.
+	> You can then go into the "Kerrigans_Terminal_Journal" folder.
+	> Go to assets/font/FSEX300.ttf - right click and install the file.
+	> Launch the KTJ.exe
 	> That's it.
 
 DO NOT MOVE THE FILES. Unless you know what you're doing. The exe must launch with journal_entries.txt in order to function and save entries.
@@ -25,9 +27,9 @@ OPTIONALLY, CREATE A DESKTOP SHORTCUT
 	- You may have to select "Show more options" first.
 
 FEATURES
-	>Create, open, edit, rename, and delete entries with ease.
+	>Create, open, edit, rename, and delete entries.
 	>Search & Filter
-	>Scrollable Entry List – Navigate through all your entries with a smooth scrollbar.
+	>Scrollable Entry List
 	>Organize Entries – Move entries up or down to keep your journal organized.
 
 CREDIT
