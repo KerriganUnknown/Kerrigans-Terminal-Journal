@@ -1,23 +1,38 @@
 import tkinter as tk
-from tkinter import messagebox, simpledialog
+from tkinter import messagebox
+import tkinter.font as tkFont
+import sys
+import os
+import shutil
 
 # -------------------- Create root --------------------
 root = tk.Tk()
-root.withdraw() 
+root.withdraw()  # hide main window
 
+# Function to check for font
+def check_font(font_name):
+    available_fonts = tkFont.families()
+    if font_name not in available_fonts:
+        messagebox.showerror(
+            "Font Not Found",
+            f"The required font '{font_name}' is not installed on your system.\n\n"
+            "Please install it from:\n"
+            "assets/font/FSEX300.ttf\n"
+            "right-click to install"
+        )
+        sys.exit()  # prevent app from launching
 
-import sys
-import os
+# Check for the required font
+check_font("Fixedsys Excelsior 3.01")
 
+# -------------------- Resource Path --------------------
 def resource_path(relative_path):
     try:
-        base_path = sys._MEIPASS
+        base_path = getattr(sys, "_MEIPASS", os.path.abspath("."))
     except AttributeError:
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
     
-import shutil
-
 # Path where the user’s journal will live
 writable_journal = os.path.join(os.path.dirname(sys.executable), "journal_entries.txt")
 
@@ -28,6 +43,7 @@ if not os.path.exists(writable_journal):
 
 # Use this path everywhere
 journal_file = writable_journal
+
 
 
 # -------------------- Fonts --------------------
