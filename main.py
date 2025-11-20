@@ -4,6 +4,43 @@ import tkinter.font as tkFont
 import sys
 import os
 import shutil
+#sound
+import pygame
+pygame.mixer.init()
+
+#------------for button click sound
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        base_path = sys._MEIPASS  # PyInstaller temporary folder
+    except AttributeError:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+    
+#-----------typing click
+typing_sound = pygame.mixer.Sound(resource_path("assets/audio/keyboard_click.wav"))
+typing_sound.set_volume(0.05)  # keep it subtle
+
+def play_typing_sound(event):
+    if event.char and event.char.isprintable():
+        typing_sound.play()
+
+#-----------------sound - UI button click
+click_sound = pygame.mixer.Sound(resource_path("assets/audio/button_click.wav"))
+click_sound.set_volume(0.1)  # adjust volume to taste
+
+def make_button(parent, text, command, **kwargs):
+    """Creates a Tkinter button that plays a click sound automatically."""
+    def wrapped_command():
+        click_sound.play()  # play the sound
+        command()           # run the original function
+    return tk.Button(parent, text=text, command=wrapped_command, **kwargs)
+
+#-------------------sound - loading screen
+def play_loading_sound():
+    pygame.mixer.music.load(resource_path("assets/audio/loading_sound.wav"))
+    pygame.mixer.music.set_volume(0.2)
+    pygame.mixer.music.play()
 
 # -------------------- Create root --------------------
 root = tk.Tk()
@@ -43,8 +80,6 @@ if not os.path.exists(writable_journal):
 
 # Use this path everywhere
 journal_file = writable_journal
-
-
 
 # -------------------- Fonts --------------------
 FONT_LABEL = ("Fixedsys Excelsior 3.01", 14)
@@ -87,19 +122,22 @@ def create_title_bar(parent, title_text):
                            bg=TITLE_BG, fg=TITLE_FG, anchor="w")
     title_label.pack(side="left", padx=10)
 
+    move_data = {"x": 0, "y": 0}
+
     def start_move_popup(event):
-        parent.x = event.x
-        parent.y = event.y
+        move_data["x"] = event.x
+        move_data["y"] = event.y
 
     def on_motion_popup(event):
-        dx = event.x - parent.x
-        dy = event.y - parent.y
+        dx = event.x - move_data["x"]
+        dy = event.y - move_data["y"]
         parent.geometry(f"+{parent.winfo_x() + dx}+{parent.winfo_y() + dy}")
 
     title_bar.bind("<Button-1>", start_move_popup)
     title_bar.bind("<B1-Motion>", on_motion_popup)
     title_label.bind("<Button-1>", start_move_popup)
     title_label.bind("<B1-Motion>", on_motion_popup)
+
 
 def show_info(title, message, extra_height=0):
     popup = tk.Toplevel(root)
@@ -122,7 +160,7 @@ def show_info(title, message, extra_height=0):
     tk.Label(popup, text=message, font=FONT_LABEL,
              bg=LEFT_BG, fg=ENTRY_FG, wraplength=280, justify="center").pack(expand=True, pady=(40, 10))
 
-    tk.Button(popup, text="[ OK ]", font=FONT_BUTTON,
+    make_button(popup, text="[ OK ]", font=FONT_BUTTON,
               bg=BUTTON_BG, fg=BUTTON_FG,
               activebackground="#339933", activeforeground="#000000",
               width=12, command=popup.destroy).pack(pady=20)
@@ -162,10 +200,10 @@ def show_custom_confirm(title, message):
         result["value"] = False
         popup.destroy()
 
-    tk.Button(button_frame, text="[ Yes ]", font=FONT_BUTTON,
+    make_button(button_frame, text="[ Yes ]", font=FONT_BUTTON,
               bg=BUTTON_BG, fg=BUTTON_FG, activebackground=BUTTON_HOVER_BG,
               activeforeground="#000000", width=10, command=yes).pack(side="left", padx=10)
-    tk.Button(button_frame, text="[ No ]", font=FONT_BUTTON,
+    make_button(button_frame, text="[ No ]", font=FONT_BUTTON,
               bg=BUTTON_BG, fg=BUTTON_FG, activebackground=BUTTON_HOVER_BG,
               activeforeground="#000000", width=10, command=no).pack(side="left", padx=10)
 
@@ -188,7 +226,6 @@ root.geometry("600x460")
 root.minsize(400, 350)
 root.configure(bg=LEFT_BG)
 root.resizable(True, True)
-
 
 # -------------------- Left Frame --------------------
 left_frame = tk.Frame(root, bg=LEFT_BG)
@@ -226,6 +263,7 @@ search_entry = tk.Entry(
     insertwidth=3
 )
 search_entry.pack(fill="x", padx=10, pady=(0, 5))
+search_entry.bind("<Key>", play_typing_sound)
 
 def add_placeholder(entry, placeholder):
     entry.insert(0, placeholder)
@@ -327,6 +365,9 @@ def new_entry():
                            insertbackground=ENTRY_FG, insertwidth=3, textvariable=entry_var, width=30)
     title_entry.pack(pady=(0, 5))
     title_entry.focus()
+    
+    #typing sound
+    title_entry.bind("<Key>", play_typing_sound)
 
     CHAR_LIMIT = 30  
 
@@ -364,7 +405,7 @@ def new_entry():
 
     title_entry.bind("<Return>", lambda event: submit_title())
 
-    tk.Button(
+    make_button(
         content_frame,
         text="[Save]",
         font=FONT_BUTTON,
@@ -375,7 +416,6 @@ def new_entry():
         width=16,
         command=submit_title
     ).pack(pady=(5,0))
-
 
 def open_entry_window(title):
     entry_window = tk.Toplevel(root)
@@ -402,17 +442,33 @@ def open_entry_window(title):
         yscrollcommand=text_scrollbar.set, wrap="word"
     )
     text_area.pack(fill="both", expand=True)
+    text_area.focus_set()
 
     text_scrollbar.config(command=text_area.yview)
 
     MAX_ENTRY_CHARS = 5000
 
-    def on_text_insert(event):
+    # create a label below your Text widget
+    char_count_label = tk.Label(bottom_frame, text=f"0/{MAX_ENTRY_CHARS}", 
+                                font=FONT_LABEL, bg=LEFT_BG, fg=ENTRY_FG)
+    char_count_label.pack(anchor="e", padx=10, pady=(0,5))
+
+    def handle_key(event):
+        # typing sound
+        if event.char and event.char.isprintable():
+            typing_sound.play()
+
+        # character count
         current_length = len(text_area.get("1.0", "end-1c"))
-        if current_length >= MAX_ENTRY_CHARS and event.keysym not in ("BackSpace", "Delete", "Left", "Right", "Up", "Down"):
+        char_count_label.config(text=f"{current_length}/{MAX_ENTRY_CHARS}")
+
+        # char limit
+        if current_length >= MAX_ENTRY_CHARS and event.keysym not in (
+            "BackSpace", "Delete", "Left", "Right", "Up", "Down"
+        ):
             return "break"
 
-    text_area.bind("<Key>", on_text_insert)
+    text_area.bind("<KeyRelease>", handle_key)
 
     try:
         with open("journal_entries.txt", "r", encoding="utf-8") as f:
@@ -421,12 +477,13 @@ def open_entry_window(title):
                 if entry.startswith(title + "\n") or entry.strip() == title:
                     content = "\n".join(entry.split("\n")[1:])
                     text_area.insert("1.0", content)
+                    char_count_label.config(text=f"{len(text_area.get('1.0', 'end-1c'))}/{MAX_ENTRY_CHARS}")
                     break
     except FileNotFoundError:
         pass
 
     def save_and_close():
-        content = text_area.get("1.0", tk.END).strip()
+        content = text_area.get("1.0", tk.END)
         updated_entries = []
         try:
             with open("journal_entries.txt", "r", encoding="utf-8") as f:
@@ -449,7 +506,7 @@ def open_entry_window(title):
             f.write("\n---\n".join(updated_entries) + "\n---\n")
         entry_window.destroy()
 
-    tk.Button(
+    make_button(
         bottom_frame,
         text="[Save and Return]",
         font=FONT_BUTTON,
@@ -460,7 +517,6 @@ def open_entry_window(title):
         width=16,
         command=save_and_close
     ).pack()
-
 
     # ---------------- Center & Show ----------------
     entry_window.update_idletasks()  
@@ -474,7 +530,6 @@ def open_entry_window(title):
 
     entry_window.deiconify() 
     entry_window.grab_set()  
-
 
 # -------------------- Entry Actions --------------------
 def open_selected():
@@ -512,6 +567,9 @@ def show_custom_rename(old_title):
     entry.pack(pady=(0, 5))
     entry.insert(0, old_title)
     entry.focus_set()
+    
+    #----typing sound
+    entry.bind("<Key>", play_typing_sound)
 
     CHAR_LIMIT = 30
     char_count_label = tk.Label(popup, text=f"{len(old_title)}/{CHAR_LIMIT}", font=FONT_LABEL,
@@ -534,9 +592,9 @@ def show_custom_rename(old_title):
         result["value"] = new_title_candidate
         popup.destroy()
 
-    tk.Button(popup, text="[ OK ]", font=FONT_BUTTON, bg=BUTTON_BG, fg=BUTTON_FG,
+    make_button(popup, text="[ OK ]", font=FONT_BUTTON, bg=BUTTON_BG, fg=BUTTON_FG,
               activebackground=BUTTON_HOVER_BG, width=10, command=confirm).pack(side="left", padx=30, pady=20)
-    tk.Button(popup, text="[ Cancel ]", font=FONT_BUTTON, bg=BUTTON_BG, fg=BUTTON_FG,
+    make_button(popup, text="[ Cancel ]", font=FONT_BUTTON, bg=BUTTON_BG, fg=BUTTON_FG,
               activebackground=BUTTON_HOVER_BG, width=10, command=popup.destroy).pack(side="right", padx=30, pady=20)
 
     popup.bind("<Return>", lambda event: confirm())
@@ -544,7 +602,6 @@ def show_custom_rename(old_title):
     popup.grab_set()
     root.wait_window(popup)
     return result["value"]
-
 
 def rename_selected():
     global all_entries
@@ -613,7 +670,6 @@ def rename_selected():
         entries_listbox.selection_set(old_index)
 
 
-
 def move_up():
     selection = list(entries_listbox.curselection())
     if not selection or selection[0] == 0:
@@ -645,7 +701,6 @@ def move_down():
         entries_listbox.selection_set(i)
 
     persist_entries_order()
-
 
 def delete_selected():
     selection = entries_listbox.curselection()
@@ -692,28 +747,27 @@ def persist_entries_order():
 button_frame_main = tk.Frame(left_frame, bg=LEFT_BG)
 button_frame_main.pack(side="bottom", fill="x", padx=6, pady=6)
 
-tk.Button(button_frame_main, text="[New]", font=FONT_BUTTON, bg=BUTTON_BG, fg=BUTTON_FG,
-          relief="groove", bd=2, activebackground="#339933", command=new_entry).pack(side="left", padx=5)
+make_button(button_frame_main, text="[New]", font=FONT_BUTTON, bg=BUTTON_BG, fg=BUTTON_FG,
+            relief="groove", bd=2, activebackground="#339933", command=new_entry).pack(side="left", padx=5)
 
-open_button = tk.Button(
+open_button = make_button(
     button_frame_main, text="[Open]", font=FONT_BUTTON, bg=BUTTON_BG, fg=BUTTON_FG,
     relief="groove", bd=2, activebackground="#339933", command=open_selected
 )
 open_button.pack(side="left", padx=5)
 
-
-rename_button = tk.Button(button_frame_main, text="[Rename]", font=FONT_BUTTON, bg=BUTTON_BG, fg=BUTTON_FG,
-                          relief="groove", bd=2, activebackground="#339933", command=rename_selected)
+rename_button = make_button(button_frame_main, text="[Rename]", font=FONT_BUTTON, bg=BUTTON_BG, fg=BUTTON_FG,
+                            relief="groove", bd=2, activebackground="#339933", command=rename_selected)
 rename_button.pack(side="left", padx=5)
 
-tk.Button(button_frame_main, text="[Move Up]", font=FONT_BUTTON, bg=BUTTON_BG, fg=BUTTON_FG,
-          relief="groove", bd=2, activebackground="#339933", command=move_up).pack(side="left", padx=5)
+make_button(button_frame_main, text="[Move Up]", font=FONT_BUTTON, bg=BUTTON_BG, fg=BUTTON_FG,
+            relief="groove", bd=2, activebackground="#339933", command=move_up).pack(side="left", padx=5)
 
-tk.Button(button_frame_main, text="[Move Down]", font=FONT_BUTTON, bg=BUTTON_BG, fg=BUTTON_FG,
-          relief="groove", bd=2, activebackground="#339933", command=move_down).pack(side="left", padx=5)
+make_button(button_frame_main, text="[Move Down]", font=FONT_BUTTON, bg=BUTTON_BG, fg=BUTTON_FG,
+            relief="groove", bd=2, activebackground="#339933", command=move_down).pack(side="left", padx=5)
 
-tk.Button(button_frame_main, text="[Delete]", font=FONT_BUTTON, bg=BUTTON_BG, fg=BUTTON_FG,
-          relief="groove", bd=2, activebackground="#339933", command=delete_selected).pack(side="left", padx=5)
+make_button(button_frame_main, text="[Delete]", font=FONT_BUTTON, bg=BUTTON_BG, fg=BUTTON_FG,
+            relief="groove", bd=2, activebackground="#339933", command=delete_selected).pack(side="left", padx=5)
 
 # -------------------- Button Enable/Disable Logic --------------------
 def update_button_states(event=None):
@@ -740,6 +794,7 @@ entries_listbox.bind("<Double-1>", on_entry_double_click)
 
 # -------------------- Loading Screen --------------------
 def show_loading_screen():
+    play_loading_sound()
     loading_screen = tk.Toplevel(root)
     loading_screen.title("ReelCore Terminal Boot")
     loading_screen.configure(bg=LEFT_BG)
@@ -782,7 +837,7 @@ def show_loading_screen():
     # Version label
     tk.Label(
         loading_screen,
-        text="v1.0.1",
+        text="v1.1.0",
         font=small_font,
         bg=LEFT_BG,
         fg=ENTRY_FG
@@ -912,8 +967,6 @@ def show_loading_screen():
         loading_screen.after(step_count*step_duration + 200, lambda: update_progress(index + 1))
 
     update_progress()
-
-
 
 # -------------------- Initialize --------------------
 root.withdraw()
