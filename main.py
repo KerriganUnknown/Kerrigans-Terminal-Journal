@@ -63,23 +63,31 @@ def check_font(font_name):
 check_font("Fixedsys Excelsior 3.01")
 
 # -------------------- Resource Path --------------------
-def resource_path(relative_path):
-    try:
-        base_path = getattr(sys, "_MEIPASS", os.path.abspath("."))
-    except AttributeError:
-        base_path = os.path.abspath(".")
-    return os.path.join(base_path, relative_path)
-    
-# Path where the user’s journal will live
-writable_journal = os.path.join(os.path.dirname(sys.executable), "journal_entries.txt")
+def resource_path(relative):
+    # Handles both .exe mode and normal Python mode
+    if hasattr(sys, "_MEIPASS"):
+        return os.path.join(sys._MEIPASS, relative)
+    return os.path.join(os.path.abspath("."), relative)
 
-# Copy the bundled one if it doesn't exist yet
-if not os.path.exists(writable_journal):
-    bundled_journal = resource_path("journal_entries.txt")  # reads from PyInstaller bundle
-    shutil.copy(bundled_journal, writable_journal)
+# Determine the folder the .exe lives in
+if getattr(sys, "frozen", False):
+    exe_dir = os.path.dirname(sys.executable)
+else:
+    # When testing as a script, use current directory
+    exe_dir = os.path.abspath(".")
 
-# Use this path everywhere
-journal_file = writable_journal
+# File path next to the .exe
+journal_path = os.path.join(exe_dir, "journal_entries.txt")
+
+# If it doesn't exist next to the .exe, create/copy it
+if not os.path.exists(journal_path):
+    bundled = resource_path("journal_entries.txt")
+    if os.path.exists(bundled):
+        shutil.copy(bundled, journal_path)
+    else:
+        with open(journal_path, "w", encoding="utf-8") as f:
+            f.write("")
+
 
 # -------------------- Fonts --------------------
 FONT_LABEL = ("Fixedsys Excelsior 3.01", 14)
