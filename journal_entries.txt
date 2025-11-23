@@ -23,11 +23,6 @@ Analog Industries Service Rep
 
 
 
-
-
-
-
-
 ---
 v1.1.0
 Greetings User.
@@ -38,14 +33,14 @@ Version 1.1.0
 	- added UI button sounds.
 	- added keystroke auditory feedback.
 	- added character limit label in Entry window.
+	- fixed the first line in Entry window text
+		> first line can now be indented and saved
+		> first line doesn't have to be used
+			i. ie., user text can start on the second line
 
 Be well.
 Clare
 Analog Industries Service Rep
-
-
-
-
 
 
 
